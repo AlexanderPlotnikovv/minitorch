@@ -1,6 +1,7 @@
 datasets==2.4.0
 embeddings==0.0.8
 networkx==2.4
+pandas>=1.5,<2.0
 plotly==4.14.3
 pydot==1.4.1
 python-mnist

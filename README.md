@@ -1,6 +1,19 @@
 # minitorch
 The full minitorch student suite. 
 
+## Setup
+
+Requires **Python 3.11** (originally pinned `numba==0.56`/`numpy==1.22` only 
+support up to Python 3.10, so dependencies were bumped to `numba>=0.57,<0.58` 
+and `numpy==1.24.4` — the overlapping compatible range, you can compare with previous versions of requirements.txt and requirements.extra.txt).
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install -r requirements.extra.txt
+pip check
+```
 
 To access the autograder: 
 
