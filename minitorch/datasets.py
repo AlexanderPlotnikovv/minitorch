@@ -21,6 +21,13 @@ class Graph:
 
 
 def simple(N: int) -> Graph:
+    """
+    Generates a dataset that is linearly separable by a single vertical line.
+
+    Points with x_1 < 0.5 are labeled 1, all others are labeled 0.
+    This is the easiest dataset to classify: a single straight decision
+    boundary (x_1 = 0.5) perfectly separates the two classes.
+    """
     X = make_pts(N)
     y = []
     for x_1, x_2 in X:
@@ -30,6 +37,13 @@ def simple(N: int) -> Graph:
 
 
 def diag(N: int) -> Graph:
+    """
+    Generates a dataset that is linearly separable by a diagonal line.
+
+    Points with x_1 + x_2 < 0.5 are labeled 1, all others are labeled 0.
+    The decision boundary is the diagonal line x_1 + x_2 = 0.5, so a
+    single linear classifier with both weights nonzero can separate it.
+    """
     X = make_pts(N)
     y = []
     for x_1, x_2 in X:
@@ -39,6 +53,14 @@ def diag(N: int) -> Graph:
 
 
 def split(N: int) -> Graph:
+    """
+    Generates a dataset split into two vertical bands on the outer edges.
+
+    Points with x_1 < 0.2 or x_1 > 0.8 are labeled 1, all points in the
+    middle band (0.2 <= x_1 <= 0.8) are labeled 0. This is NOT linearly
+    separable by a single line, since class 1 occupies two disjoint
+    regions on opposite sides of class 0.
+    """
     X = make_pts(N)
     y = []
     for x_1, x_2 in X:
@@ -48,6 +70,14 @@ def split(N: int) -> Graph:
 
 
 def xor(N: int) -> Graph:
+    """
+    Generates the classic XOR dataset.
+
+    Points are labeled 1 when x_1 and x_2 fall on opposite sides of 0.5
+    (i.e. exactly one of them is > 0.5), and 0 otherwise. This is the
+    canonical example of a dataset that is NOT linearly separable and
+    requires a nonlinear (or multi-layer) decision boundary.
+    """
     X = make_pts(N)
     y = []
     for x_1, x_2 in X:
@@ -57,6 +87,13 @@ def xor(N: int) -> Graph:
 
 
 def circle(N: int) -> Graph:
+    """
+    Generates a dataset where one class forms a ring around the center.
+
+    Points outside a circle of radius sqrt(0.1) centered at (0.5, 0.5)
+    are labeled 1, points inside are labeled 0. This requires a circular
+    (nonlinear) decision boundary and cannot be separated by a straight line.
+    """
     X = make_pts(N)
     y = []
     for x_1, x_2 in X:
@@ -67,6 +104,15 @@ def circle(N: int) -> Graph:
 
 
 def spiral(N: int) -> Graph:
+    """
+    Generates two interleaved spiral arms, one per class.
+
+    Class 0 and class 1 each form a spiral curve winding around the
+    center, offset from each other. This is a highly nonlinear pattern
+    that cannot be separated by simple curves like a line or circle,
+    and is typically used to test more expressive (multi-layer) models.
+    """
+
     def x(t: float) -> float:
         return t * math.cos(t) / 20.0
 
