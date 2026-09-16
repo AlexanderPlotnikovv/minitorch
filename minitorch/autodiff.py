@@ -66,7 +66,7 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     order = []
 
     def dfs(v: Variable) -> None:
-        if v.unique_id in visited:
+        if v.unique_id in visited or v.is_constant():
             return
         visited.add(v.unique_id)
         for parent in v.parents:
