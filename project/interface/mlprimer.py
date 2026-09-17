@@ -11,6 +11,7 @@ from chalk import (
     unit_x,
     unit_y,
 )
+from chalk import *
 from colour import Color
 from drawing import aqua, black, lightblue, lightred
 
