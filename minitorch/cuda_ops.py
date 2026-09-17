@@ -455,7 +455,7 @@ def _tensor_matrix_multiply(
         if i < a_rows and k1 < a_cols:
             a_shared[pi, pj] = a_storage[
                 batch * a_batch_stride + i * a_strides[-2] + k1 * a_strides[-1]
-                ]
+            ]
         else:
             a_shared[pi, pj] = 0.0
 
@@ -463,7 +463,7 @@ def _tensor_matrix_multiply(
         if k2 < b_rows and j < b_cols:
             b_shared[pi, pj] = b_storage[
                 batch * b_batch_stride + k2 * b_strides[-2] + j * b_strides[-1]
-                ]
+            ]
         else:
             b_shared[pi, pj] = 0.0
 
@@ -476,7 +476,7 @@ def _tensor_matrix_multiply(
 
     if i < out_shape[-2] and j < out_shape[-1]:
         out_pos = (
-                batch * out_strides[0] + i * out_strides[-2] + j * out_strides[-1]
+            batch * out_strides[0] + i * out_strides[-2] + j * out_strides[-1]
         )
         out[out_pos] = acc
 
