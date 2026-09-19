@@ -222,6 +222,7 @@ purely a compilation strategy hint, not part of the algorithm's semantics.
   after the loop completes.
 
 ### Diagnostics output (`python project/parallel_check.py`)
+
 ```
 MAP
  
@@ -524,3 +525,64 @@ No allocation hoisting found
 None
 ```
 
+### On Fast GPU/CPU:
+
+### Simple
+
+- GPU: Time/epoch: 1.36 s | Final loss: 0.02 | Accuracy: 50/50
+- CPU: Time/epoch: 0.21 s | Final loss: 0.60 | Accuracy: 50/50
+
+### Split
+
+- GPU: Time/epoch: 1.44 s | Final loss: 0.13 | Accuracy: 50/50
+- CPU: Time/epoch: 0.18 s | Final loss: 0.43 | Accuracy: 50/50
+
+### Xor
+
+- GPU: Time/epoch: 1.39 s | Final loss: 0.71 | Accuracy: 50/50
+- CPU: Time/epoch: 0.24 s | Final loss: 1.03 | Accuracy: 50/50
+
+### Honest Analysis: GPU vs CPU Performance
+
+Across all three datasets, the CPU backend (`FastOps`, Numba `prange` parallelism from Task 3.1) consistently
+**outperformed** the GPU backend (`CudaOps`, Task 3.3/3.4) by roughly **6-8x** at this problem scale (`HIDDEN=100`,
+`PTS=50`, `BATCH=10`):
+
+| Dataset | GPU time/epoch | CPU time/epoch | CPU is faster by |
+|---------|----------------|----------------|------------------|
+| Simple  | 1.36 s         | 0.21 s         | ~6.5x            |
+| Split   | 1.44 s         | 0.18 s         | ~8.0x            |
+| Xor     | 1.39 s         | 0.24 s         | ~5.8x            |
+
+**This is the opposite of what raw hardware throughput would predict** — this GPU has far more FLOPS and memory
+bandwidth than the CPU. The cause is not the CUDA kernels themselves (`tensor_map`, `tensor_zip`, `tensor_reduce`,
+`_tensor_matrix_multiply` all pass 100% of `task3_3`/`task3_4` correctness tests), but a **device-residency problem**
+one layer above them, in the base `Tensor`/`TensorData` utilities:
+
+- `NumbaPerformanceWarning: Host array used in CUDA kernel will incur copy overhead to/from device` fired on essentially
+  every single kernel launch throughout training.
+- `Tensor.zeros()` builds its buffer as a plain Python list → `numpy.ndarray`, then calls `to_cuda_()` to copy it to
+  device — this happens **for every intermediate tensor in the computation graph** (every `Add`, `Mul`, `ReLU`,
+  `Sigmoid`, `MatMul` output), not just once for the model's weights.
+- `Tensor._ensure_tensor()` does the same host-then-copy pattern every time a raw Python scalar (e.g. `1.0` in
+  `(out - 1.0) * (y - 1.0)`) is combined with a tensor.
+- With ~30-50 elementwise/matmul operations per forward+backward pass and 5 batches per epoch, this adds up to hundreds
+  of PCIe round-trips per epoch, each carrying a fixed latency cost that dwarfs the actual compute time for tensors this
+  small.
+
+**Attempted fix:** replaced `Tensor.zeros()`'s host-list-then-copy with a direct `cuda.device_array()` allocation,
+hoping to skip the transfer entirely for freshly-created output buffers.
+
+**Result: performance got *worse***, not better. The likely explanation is that `cuda.device_array()` triggers a fresh
+`cudaMalloc` for every one of these hundreds of per-epoch tensors, and GPU memory allocation carries its own non-trivial
+fixed overhead (device synchronization, allocator bookkeeping) — for this workload's many small, short-lived
+allocations, that overhead apparently exceeded the cost of the original host-copy path. This change was reverted; the
+results above reflect the original `zeros()` implementation.
+
+**Conclusion:** GPU throughput advantages only materialize once per-kernel compute time exceeds fixed per-launch
+overhead (transfer and/or allocation). At `HIDDEN=100` with a 50-point dataset, the tensors involved are simply too
+small for that to happen — the CUDA kernels are correct and would scale well on larger workloads, but the surrounding
+memory-management layer (not part of this assignment's Task 3.1-3.4 scope) does not keep intermediate tensors
+GPU-resident across operations. Production frameworks (PyTorch, TensorFlow) solve exactly this problem with a
+caching/pooling allocator that reuses device memory instead of calling `cudaMalloc`/copy on every op — implementing one
+is the realistic "cleverness" the assignment alludes to, but is beyond the scope of the kernel-level tasks here.
